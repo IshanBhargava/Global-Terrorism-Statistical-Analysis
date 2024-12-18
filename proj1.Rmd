@@ -1,0 +1,360 @@
+---
+---
+---
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+raw_data <- read.csv("/Users/ibhargava/Desktop/globalterrorismdb_0718dist.csv") 
+data2 <- raw_data
+```
+
+```{r}
+summary(raw_data)
+```
+
+```{r}
+sapply(raw_data, function(x) sum(is.na(x)))
+```
+
+```{r}
+data2[is.na(data2)] <- 0
+```
+
+```{r}
+sapply(data2, function(x) sum(is.na(x)))
+```
+
+```{r}
+data2$attack_var <- data2$nkill
+```
+
+```{r}
+data2 <- data2 %>% mutate(attack_var = replace(attack_var,data2$nkill>=3& data2$nkill<10,2))
+data2 <- data2 %>% mutate(attack_var = replace(attack_var, data2$nkill>=10,3))
+data2 <- data2 %>% mutate(attack_var = replace(attack_var, data2$nkill<3,1))
+```
+
+```{r}
+df1 <- data2[data2$attack_var == "1", ]  
+df2<- data2[data2$attack_var == "2", ]
+df3<-data2[data2$attack_var == "3", ]
+
+df1_num = data.frame(year=1970,df1 %>% filter(df1$iyear==1970) %>% summarize(attacks = n()))
+df2_num = data.frame(year=1970,df2 %>% filter(df2$iyear==1970) %>% summarize(attacks = n()))
+df3_num = data.frame(year=1970,df3 %>% filter(df3$iyear==1970) %>% summarize(attacks = n()))
+
+for (n in 1971:2017)
+{
+    df1_num[nrow(df1_num) + 1,] = c(n, df1 %>% filter(df1$iyear==n) %>% summarize(attacks = n()))
+    df2_num[nrow(df2_num) + 1,] = c(n, df2 %>% filter(df2$iyear==n) %>% summarize(attacks = n()))
+    df3_num[nrow(df3_num) + 1,] = c(n, df3 %>% filter(df3$iyear==n) %>% summarize(attacks = n()))
+}
+```
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+ggplot(df1_num, aes(x=year, y=attacks)) + geom_point()+ ggtitle ("Minor attacks") +
+        theme(text=element_text(size=16))
+ggplot(df2_num, aes(x=year, y=attacks)) + geom_point() + ggtitle ("Mid-sized attacks") + theme(text=element_text(size=16))
+ggplot(df3_num, aes(x=year, y=attacks)) + geom_point() + ggtitle ("Major attacks") + theme(text=element_text(size=16))
+```
+
+```{r}
+m1 <- lm(attacks ~ year, data=df1_num)
+summary(m1)
+par(mfrow= c(2,2))
+plot(m1)
+```
+
+```{r}
+m2 <- lm(attacks ~ year, data=df2_num)
+summary(m2)
+par(mfrow= c(2,2))
+plot(m2)
+```
+
+```{r}
+m3 <- lm(attacks ~ year, data=df3_num)
+summary(m3)
+par(mfrow= c(2,2))
+plot(m3)
+```
+
+```{r}
+ggplot(df1_num, aes(x=year, y=attacks)) + geom_point() + ggtitle ("Minor attacks (LM)") + theme(text=element_text(size=16)) + 
+stat_smooth(method = "lm",
+              formula = y ~ x,
+              geom = "smooth")
+
+ggplot(df2_num, aes(x=year, y=attacks)) + geom_point() + ggtitle ("Mid sized attacks (LM)") + theme(text=element_text(size=16)) + 
+stat_smooth(method = "lm",
+              formula = y ~ x,
+              geom = "smooth")
+
+ggplot(df3_num, aes(x=year, y=attacks)) + geom_point() + ggtitle ("Major attacks (LM)") + theme(text=element_text(size=16)) + 
+stat_smooth(method = "lm",
+              formula = y ~ x,
+              geom = "smooth")
+```
+
+```{r}
+colors <- c("Major Attacks"="red","Small Attacks"="blue","Minor Attacks"="green")
+ggplot()+
+  geom_point(data=df1_num, aes(x=year,y=attacks,color="Major Attacks"), show.legend = TRUE)+
+  geom_point(data=df2_num, aes(x=year,y=attacks,color="Minor Attacks"),show.legend = TRUE)+
+  geom_point(data=df3_num, aes(x=year,y=attacks,color="Small Attacks"),show.legend = TRUE)+
+  ggtitle('Three types of terror attacks') +
+  labs(color = "Type of Attack")+
+  scale_color_manual(values = colors)+
+  scale_x_continuous("Year of Attacks")+
+  scale_y_continuous("Number of Attacks")
+```
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+world_data <- raw_data
+world_data1 <- world_data[!is.na(world_data$latitude),]
+world_data2 <- world_data1[!is.na(world_data1$longitude),]
+
+world_data2$attack_var <- world_data2$nkill
+
+world_data2 <- world_data2 %>% mutate(attack_var = replace(attack_var, world_data2$nkill>=3 & world_data2$nkill<10,2))
+world_data2 <- world_data2 %>% mutate(attack_var = replace(attack_var, world_data2$nkill>=10,3))
+world_data2 <- world_data2 %>% mutate(attack_var = replace(attack_var, world_data2$nkill<3,1))
+
+world_data2[is.na(world_data2)] <- 0
+
+wd1 <- world_data2[world_data2$attack_var == "1", ]
+wd2 <- world_data2[world_data2$attack_var == "2", ]
+wd3 <- world_data2[world_data2$attack_var == "3", ]
+```
+
+```{r}
+world_coordinates <- map_data("world")
+options(repr.plot.width = 50, repr.plot.height =50)
+
+ggplot() + geom_map(
+    data = world_coordinates, map = world_coordinates,
+    aes(long, lat, map_id = region), fill="grey"
+  ) + 
+geom_point(
+    data = wd1,
+    aes(x=longitude, y=latitude, size='attack_num')
+  )
+```
+
+```{r}
+library(ggmap)
+world <- map_data("world")
+```
+
+### Major attacks
+
+```{r}
+ggplot() +
+  geom_map(
+    data = world, map = world,
+    aes(long, lat, map_id = region),
+    color = "white", fill = "lightgray", size = 0.1
+  ) +
+  geom_point(
+    data = df1,
+    aes(longitude, latitude,
+        color = nkill),
+    alpha = 0.5
+  ) +
+  labs(x = NULL, y = NULL, color = NULL)+
+  theme_void() +
+  theme(legend.position = "none")+
+  labs(title="Major Terror Attack Locations")
+
+plot(x=df1_num$year,y=df1_num$attacks,main = "Major Terror Attacks",
+     xlab = "Year",
+     ylab = "Number of Attacks")
+abline(m1,col = "red")
+```
+
+```{r}
+library(car)
+
+# Calculating Residuals
+residuals <- m1$residuals
+
+# Normality test
+ks.test(residuals, rnorm(100,0,1))    # Since p value is very small, we can reject the null hypothesis
+
+# And say that residuals do not follow a normal distritbution
+shapiro.test(residuals)               # Small value of Shapiro-Wilk test also leads up to the same result
+
+
+# Constant Variance Assumption/Cook Weinberg Test
+ncvTest(m1)                         # Small value indicates that assumption is violated
+
+plot(m1$fitted.values, m1$residuals)
+
+# Spread Level Plot
+myspread <- spreadLevelPlot(m1)
+myspread
+
+y <- df1_num$attacks
+x <- df1_num$year
+
+# Spread Level transformation and New Model
+z<-y^(myspread$PowerTransformation)
+mylm2<-lm(z ~ x)
+summary(mylm2)
+
+# Cook Weinberg Test Again
+ncvTest(mylm2)                      # a high value of p indicates constant variance
+plot(mylm2$fitted.values, mylm2$residuals)
+
+# Normality Test 
+residuals2 <- mylm2$residuals
+n <- 47
+sd1 <- sd(mylm2$residuals)
+
+ks.test(rnorm(n,0,sd1),mylm2$residuals)   # Large value of p indicates that residuals are normal
+```
+
+### Minor attacks
+
+```{r}
+ggplot() +
+  geom_map(
+    data = world, map = world,
+    aes(long, lat, map_id = region),
+    color = "white", fill = "lightgray", size = 0.1
+  ) +
+  geom_point(
+    data = df2,
+    aes(longitude, latitude,
+        color = nkill),
+    alpha = 0.5
+  ) +
+  labs(x = NULL, y = NULL, color = NULL)+
+  theme_void() +
+  theme(legend.position = "none")+
+  labs(title="Minor Terror Attack Locations")
+
+plot(x=df2_num$year,y=df2_num$attacks,main = "Minor Terror Attacks",
+     xlab = "Year",
+     ylab = "Number of Attacks")
+abline(m2,col = "red")
+```
+
+```{r}
+# Calculating Residuals
+residuals <- m2$residuals
+
+# Normality test
+ks.test(residuals, rnorm(100,0,1))    # Since p value is very small, we can reject the null hypothesis
+
+# And say that residuals do not follow a normal distritbution
+shapiro.test(residuals)               # Small value of Shapiro-Wilk test also leads up to the same result
+
+
+# Constant Variance Assumption/Cook Weinberg Test
+ncvTest(m2)                         # Small value indicates that assumption is violated
+
+plot(m2$fitted.values, m2$residuals)
+
+# Spread Level Plot
+myspread <- spreadLevelPlot(m2)
+myspread
+
+y <- df2_num$attacks
+x <- df2_num$year
+
+# Spread Level transformation and New Model
+z<-y^(myspread$PowerTransformation)
+mylm2<-lm(z ~ x)
+summary(mylm2)
+
+# Cook Weinberg Test Again
+ncvTest(mylm2)                      # a high value of p indicates constant variance
+plot(mylm2$fitted.values, mylm2$residuals)
+
+# Normality Test 
+residuals2 <- mylm2$residuals
+n <- 47
+sd1 <- sd(mylm2$residuals)
+
+ks.test(rnorm(n,0,sd1),mylm2$residuals)   # Large value of p indicates that residuals are normal
+```
+
+### Small attacks
+
+```{r}
+ggplot() +
+  geom_map(
+    data = world, map = world,
+    aes(long, lat, map_id = region),
+    color = "white", fill = "lightgray", size = 0.1
+  ) +
+  geom_point(
+    data = df3,
+    aes(longitude, latitude,
+        color = nkill),
+    alpha = 0.5
+  ) +
+  labs(x = NULL, y = NULL, color = NULL)+
+  theme_void() +
+  theme(legend.position = "none")+
+  labs(title="Small Terror Attack Locations")
+
+plot(x=df3_num$year,y=df3_num$attacks,main = "Small Terror Attacks",
+     xlab = "Year",
+     ylab = "Number of Attacks")
+abline(m3,col = "red")
+```
+
+```{r}
+# Calculating Residuals
+residuals <- m3$residuals
+
+# Normality test
+ks.test(residuals, rnorm(100,0,1))    # Since p value is very small, we can reject the null hypothesis
+
+# And say that residuals do not follow a normal distritbution
+shapiro.test(residuals)               # Small value of Shapiro-Wilk test also leads up to the same result
+
+
+# Constant Variance Assumption/Cook Weinberg Test
+ncvTest(m3)                         # Small value indicates that assumption is violated
+
+plot(m3$fitted.values, m3$residuals)
+
+# Spread Level Plot
+myspread <- spreadLevelPlot(m3)
+myspread
+
+y <- df3_num$attacks
+x <- df3_num$year
+
+# Spread Level transformation and New Model
+z<-y^(myspread$PowerTransformation)
+mylm2<-lm(z ~ x)
+summary(mylm2)
+
+# Cook Weinberg Test Again
+ncvTest(mylm2)                      # a high value of p indicates constant variance
+plot(mylm2$fitted.values, mylm2$residuals)
+
+# Normality Test 
+residuals2 <- mylm2$residuals
+n <- 47
+sd1 <- sd(mylm2$residuals)
+
+ks.test(rnorm(n,0,sd1),mylm2$residuals)   # Large value of p indicates that residuals are normal
+```
